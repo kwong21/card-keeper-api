@@ -19,18 +19,21 @@ func (controller *Controller) Collection(c *gin.Context) {
 	error := c.BindJSON(&newCard)
 
 	if error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid data",
-		})
+		setResponse(c, "invalid data", http.StatusBadRequest)
 	} else {
 		err := controller.Service.AddCard(newCard)
 
 		if err != nil {
-			// Proper err handling
+			setResponse(c, "internal error", http.StatusInternalServerError)
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "ok",
-		})
+		setResponse(c, "ok", http.StatusAccepted)
 	}
 	return
+}
+
+func setResponse(c *gin.Context, m string, s int) *gin.Context {
+	c.JSON(s, gin.H{
+		"message": m,
+	})
+	return c
 }
