@@ -43,7 +43,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	// Verify that the POST request succeeded with HTTP 200
-	if w.Code != http.StatusOK {
+	if w.Code != http.StatusAccepted {
 		t.Errorf("Expected to get HTTP 200, but got %d", w.Code)
 		t.Fail()
 	}
