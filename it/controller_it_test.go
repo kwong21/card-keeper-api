@@ -41,7 +41,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 
 	c.Service = &s
 
-	r.POST("/collection", c.Collection)
+	r.POST("/collection", c.AddToCollection)
 
 	b, _ := json.Marshal(card)
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))

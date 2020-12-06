@@ -30,7 +30,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 
 	c.Service = &s
 
-	r.POST("/collection", c.Collection)
+	r.POST("/collection", c.AddToCollection)
 
 	b, _ := json.Marshal(card)
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
@@ -63,7 +63,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 // TestAddNewCardError expects error to be returned when data is incorrect
 func TestAddNewCardError(t *testing.T) {
 	w, r, c := setupTestControllerAndHTTPRecorder()
-	r.POST("/collection", c.Collection)
+	r.POST("/collection", c.AddToCollection)
 
 	b, _ := json.Marshal("foo bar")
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))

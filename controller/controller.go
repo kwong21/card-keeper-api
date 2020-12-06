@@ -13,8 +13,8 @@ type Controller struct {
 	Service *service.Service
 }
 
-// Collection handles requests to collection endpoint
-func (controller *Controller) Collection(c *gin.Context) {
+// AddToCollection accepts POST request for adding card to collection
+func (controller *Controller) AddToCollection(c *gin.Context) {
 	var newCard model.Card
 	error := c.BindJSON(&newCard)
 
