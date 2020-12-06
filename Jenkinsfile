@@ -1,10 +1,10 @@
 pipeline {
     agent any
     tools {
-        go 'go1.14'
+        go 'Go 1.15 Compiler'
     }
     environment {
-        GO114MODULE = 'on'
+        GO115MODULE = 'on'
         CGO_ENABLED = 0 
         GOPATH = "${JENKINS_HOME}/jobs/${JOB_NAME}/builds/${BUILD_ID}"
     }
@@ -14,6 +14,7 @@ pipeline {
                 echo 'Installing dependencies'
                 sh 'go version'
                 sh 'go get -u golang.org/x/lint/golint'
+                sh 'go mod download'
             }
         }
         
@@ -32,7 +33,7 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'cd test && go test -v'
+                    sh 'go test `go list ./... | grep -v it`'
                 }
             }
         }
