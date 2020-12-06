@@ -17,13 +17,6 @@ pipeline {
                 sh 'go mod download'
             }
         }
-        
-        stage('Build') {
-            steps {
-                echo 'Compiling and building'
-                sh 'go build'
-            }
-        }
 
         stage('Test') {
             steps {
@@ -37,15 +30,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Build') {
+            when {
+                branch 'master'
+            }
+            steps {
+                echo 'Compiling and building'
+                sh 'go build'
+            }
+        }
         
     }
-    post {
-        always {
-            emailext body: "${currentBuild.currentResult}: Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-                to: "${params.RECIPIENTS}",
-                subject: "Jenkins Build ${currentBuild.currentResult}: Job ${env.JOB_NAME}"
+    // Add notifications to email
+    // post {
+    //     always {
+    //         emailext body: "${currentBuild.currentResult}: Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}",
+    //             recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+    //             to: "${params.RECIPIENTS}",
+    //             subject: "Jenkins Build ${currentBuild.currentResult}: Job ${env.JOB_NAME}"
             
-        }
-    }  
+    //     }
+    // }  
 }
