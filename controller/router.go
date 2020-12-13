@@ -9,6 +9,16 @@ func InitRouter() *gin.Engine {
 	v1 := router.Group("v1")
 	controller := new(Controller)
 
-	v1.POST("/colleciton", controller.AddToCollection)
+	v1.POST("/collection", checkJWT(), controller.AddToCollection)
 	return router
+}
+
+func checkJWT() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		jwtMiddleware := getJWTMiddleware()
+
+		if err := jwtMiddleware.CheckJWT(c.Writer, c.Request); err != nil {
+			c.AbortWithStatus(401)
+		}
+	}
 }
