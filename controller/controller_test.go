@@ -5,13 +5,21 @@ import (
 	"card-keeper-api/model"
 	"card-keeper-api/service"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
+
+// AuthReponse is the struct wrapper for the Auth0 auth request
+type AuthResponse struct {
+	Token string `json:"access_token"`
+	Type  string `json:"token_type"`
+}
 
 // TestAddsNewCardToRepo verifies behaviour for adding a new card.
 func TestAddsNewCardToRepo(t *testing.T) {
@@ -89,7 +97,7 @@ func TestUnAuthenticatedAPICall(t *testing.T) {
 func TestAuthenticatedAPICall(t *testing.T) {
 	req, err := http.NewRequest("GET", "/ping", nil)
 
-	req.Header.Set("authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IlhDeE53XzE1WFh1ZkItRk5vQ2FVVSJ9.eyJpc3MiOiJodHRwczovL2Rldi1zaGliYXRlay51cy5hdXRoMC5jb20vIiwic3ViIjoiVFVXaEFIQ2hNT0dUU0dYZlVEMEdwRWpOV3Bsc0lNMXBAY2xpZW50cyIsImF1ZCI6Imh0dHBzOi8vY2FyZGtlZXBlci1kZXYvYXBpIiwiaWF0IjoxNjA3ODk4MzQyLCJleHAiOjE2MDc5ODQ3NDIsImF6cCI6IlRVV2hBSENoTU9HVFNHWGZVRDBHcEVqTldwbHNJTTFwIiwiZ3R5IjoiY2xpZW50LWNyZWRlbnRpYWxzIn0.MMaJXDyZJYVP7WvBhLCrWJd6VfkykI-kgQ02Ra65aRYuqKfY2zwqeIam_dZHYAG0JyZyIQl6nE_AHEXIjwpGKNLynuFT9eHPaP3QOLI3FYDS0a8pgjOY0bCvTnRGTSWJn1Z93HIlZoX7-E6KbARpb0t-H-1_CaxbkDAptB7g5eQBklJR9ZpESePZ9t6cSgh0bF1n2CDoeAAXg-VW9sR4jJ0LxVL1EkMFMNyPchjaSgk8HDBcVWkoV1ZwvvdNc__LofeIjSERHSaIBRVCqj85PuUCR2TVOXEcuxP5h01Ehp4oR48fO2jeOGLZMxGVXh62vpicPFp5bfE6w0mN-xCqHA")
+	req.Header.Set("authorization", getBearerTokenForTest())
 
 	checkError(err, t)
 
@@ -102,10 +110,6 @@ func TestAuthenticatedAPICall(t *testing.T) {
 
 func testCheckJWTRequests(req *http.Request) int {
 	w, r, c := setupTestControllerAndHTTPRecorder()
-
-	// Set dev testing Auth0 instance
-	os.Setenv("AUTH0_AUDIENCE", "https://cardkeeper-dev/api")
-	os.Setenv("AUTH0_ISSUER", "https://dev-shibatek.us.auth0.com/")
 
 	r.GET("/ping", checkJWT(), c.Ping)
 
@@ -146,4 +150,41 @@ func checkError(err error, t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
+}
+
+func getBearerTokenForTest() string {
+	auth := new(AuthResponse)
+
+	url := os.Getenv("AUTH0_URL")
+
+	clientID := os.Getenv("AUTH0_CLIENT_ID")
+	secretID := os.Getenv("AUTH0_SECRET_ID")
+	audience := os.Getenv("AUTH0_AUDIENCE")
+
+	payload := strings.NewReader(
+		"{\"client_id\":" + "\"" + clientID + "\"" +
+			",\"client_secret\":" + "\"" + secretID + "\"" +
+			",\"audience\":" + "\"" + audience + "\"" +
+			",\"grant_type\":\"client_credentials\"}")
+
+	req, _ := http.NewRequest("POST", url, payload)
+
+	req.Header.Add("content-type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+
+	err = json.Unmarshal(body, auth)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return auth.Type + " " + auth.Token
 }
