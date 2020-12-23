@@ -23,4 +23,5 @@ require (
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gorm.io/driver/postgres v1.0.5
 	gorm.io/gorm v1.20.6
+	github.com/sirupsen/logrus v1.7.0 
 )

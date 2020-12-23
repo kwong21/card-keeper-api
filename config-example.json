@@ -1,0 +1,10 @@
+{
+    "DB": {
+        "Type": "mongodb"
+    },
+    "API": {
+        "AllowedOrigin": "http://localhost:4200",
+        "LogPath": "card-keeper-api.log",
+        "ListenPort": "8080"
+    }
+}

@@ -31,8 +31,7 @@ func (controller *Controller) AddToCollection(c *gin.Context) {
 	return
 }
 
-// Ping checks status of API server
-// @TODO make this more useful?
+// Ping returns status of the API
 func (controller *Controller) Ping(c *gin.Context) {
 	setResponse(c, "pong", http.StatusOK)
 }

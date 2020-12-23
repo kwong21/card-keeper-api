@@ -87,6 +87,7 @@ func setupDatabase() (*gorm.DB, error) {
 
 	return db, err
 }
+
 func verifyHTTPResponseBody(expected string, actual string, t *testing.T) {
 	if actual != expected {
 		t.Errorf("Expected message body of %v, but got %v", expected, actual)
