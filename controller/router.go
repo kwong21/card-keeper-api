@@ -1,20 +1,20 @@
 package controller
 
 import (
-	"card-keeper-api/model"
+	"card-keeper-api/config"
+	"card-keeper-api/middleware"
 	"card-keeper-api/service"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
-// InitRouter registers the routes for the application
-func InitRouter() *gin.Engine {
-	controller := setupController()
+// InitServer registers the routes for the application
+func InitServer(configs config.Configuration) *gin.Engine {
+	router := gin.New()
+	router.Use(middleware.LogToFile())
+	router.Use(middleware.CorsMiddleware(configs.APIAllowedOrigin()))
 
-	router := gin.Default()
-	router.Use(corsMiddleware())
+	controller := setupController(configs.DBConfigs())
 
 	v1 := router.Group("v1")
 
@@ -27,7 +27,7 @@ func InitRouter() *gin.Engine {
 
 func checkJWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		jwtMiddleware := getJWTMiddleware()
+		jwtMiddleware := middleware.JWTMiddleware()
 
 		if err := jwtMiddleware.CheckJWT(c.Writer, c.Request); err != nil {
 			c.AbortWithStatus(401)
@@ -35,12 +35,10 @@ func checkJWT() gin.HandlerFunc {
 	}
 }
 
-func setupController() *Controller {
+func setupController(configs config.DBConfiguration) *Controller {
 	controller := new(Controller)
 
-	db, _ := setupDatabase()
-
-	repo := service.Database(db)
+	repo, _ := service.MongoDB()
 	s := service.Service{
 		Repository: repo,
 	}
@@ -48,13 +46,4 @@ func setupController() *Controller {
 	controller.Service = &s
 
 	return controller
-}
-
-func setupDatabase() (*gorm.DB, error) {
-	dsn := "user=tester dbname=cardkeeper port=26257 sslmode=disable"
-	//	dsn := "user=keeperuser dbname=cardkeeper port=26257 sslmode=prefer sslrootcert=certs/ca.crt sslcert=certs/client.keeperuser.crt sslkey=certs/client.keeperuser.key"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	db.Migrator().CreateTable(&model.Card{})
-
-	return db, err
 }

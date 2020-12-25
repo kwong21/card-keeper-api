@@ -1,0 +1,7 @@
+version: "3.8"
+
+services:
+  cockroachdb:
+    image: bitnami/mongodb:latest
+    ports:
+      - "27017:27017"

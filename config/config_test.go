@@ -29,11 +29,6 @@ func TestReturnValuesInFile(t *testing.T) {
 		fail = true
 	}
 
-	if c.APILogPath() != "card-keeper-api.log" {
-		t.Errorf("Expected card-keeper-api.log, but got %s", c.APILogPath())
-		fail = true
-	}
-
 	if c.APIListenPort() != "8080" {
 		t.Errorf("Expected 8080, but got %s", c.APIListenPort())
 		fail = true
@@ -54,11 +49,6 @@ func testDefault(c Configuration, t *testing.T) {
 
 	if c.APIAllowedOrigin() != "http://localhost:4200" {
 		t.Errorf("Expected localhost:4200, but got %s", c.APIAllowedOrigin())
-		fail = true
-	}
-
-	if c.APILogPath() != "/var/log/card-keeper-api/card-keeper-api.log" {
-		t.Errorf("Expected localhost:4200, but got %s", c.APILogPath())
 		fail = true
 	}
 

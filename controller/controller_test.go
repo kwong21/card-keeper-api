@@ -5,11 +5,8 @@ import (
 	"card-keeper-api/model"
 	"card-keeper-api/service"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -23,23 +20,16 @@ type AuthResponse struct {
 
 // TestAddsNewCardToRepo verifies behaviour for adding a new card.
 func TestAddsNewCardToRepo(t *testing.T) {
-	w, r, c := setupTestControllerAndHTTPRecorder()
-
-	repo := service.InMemoryStore()
-	s := service.Service{
-		Repository: repo,
-	}
-
-	c.Service = &s
-
-	r.POST("/collection", c.AddToCollection)
-
 	b := getSerializedTestCard()
+	s := getTestService()
+
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
 
-	checkError(err, t)
+	w := sendTestRequest(req, s)
 
-	r.ServeHTTP(w, req)
+	if err != nil {
+		checkError(err, t)
+	}
 
 	// Verify that the POST request succeeded with HTTP 200
 	if w.Code != http.StatusAccepted {
@@ -52,7 +42,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 	verifyHTTPResponseBody(expected, w.Body.String(), t)
 
 	// Verify that the card is in the Stored
-	cards := c.Service.GetAll()
+	cards := s.GetAll()
 	if len(*cards) != 1 {
 		t.Errorf("Expected to get 1 card, but got %d", len(*cards))
 		t.Fail()
@@ -61,15 +51,14 @@ func TestAddsNewCardToRepo(t *testing.T) {
 
 // TestAddNewCardError expects error to be returned when data is incorrect
 func TestAddNewCardError(t *testing.T) {
-	w, r, c := setupTestControllerAndHTTPRecorder()
-	r.POST("/collection", c.AddToCollection)
-
 	b, _ := json.Marshal("foo bar")
+	s := getTestService()
+
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
 
-	checkError(err, t)
+	w := sendTestRequest(req, s)
 
-	r.ServeHTTP(w, req)
+	checkError(err, t)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Expected to get HTTP 400, but got %d", w.Code)
@@ -80,44 +69,71 @@ func TestAddNewCardError(t *testing.T) {
 	verifyHTTPResponseBody(expected, w.Body.String(), t)
 }
 
-// TestUnAuthenticatedAPICall verifies a 401 is received if unauthorized
-func TestUnAuthenticatedAPICall(t *testing.T) {
+// TestPing checks that the API is responding
+func TestPing(t *testing.T) {
+	s := getTestService()
+
 	req, err := http.NewRequest("GET", "/ping", nil)
+
+	w := sendTestRequest(req, s)
 
 	checkError(err, t)
 
-	responseCode := testCheckJWTRequests(req)
-
-	if responseCode != http.StatusUnauthorized {
-		t.Errorf("Expected to get HTTP 401, but got %d", responseCode)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200 but got %d", w.Code)
 	}
 }
 
-// TestAuthenticatedAPICall verifies a 200 is received if authorized
-func TestAuthenticatedAPICall(t *testing.T) {
-	req, err := http.NewRequest("GET", "/ping", nil)
+// TestErrorOnDuplicate verifies an error is returned when a duplicate card is added.
+func TestErrorOnDuplicate(t *testing.T) {
+	b := getSerializedTestCard()
+	s := getTestService()
 
-	req.Header.Set("authorization", getBearerTokenForTest())
+	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
 
-	checkError(err, t)
+	w := sendTestRequest(req, s)
 
-	responseCode := testCheckJWTRequests(req)
+	if err != nil {
+		checkError(err, t)
+	}
 
-	if responseCode != http.StatusOK {
-		t.Errorf("Expected to get HTTP 200, but got %d", responseCode)
+	if w.Code != http.StatusAccepted {
+		t.Errorf("Expected 202 but got %d", w.Code)
+	}
+
+	req, err = http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
+	w = sendTestRequest(req, s)
+
+	if err != nil {
+		checkError(err, t)
+	}
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("Expected 409, but got %d", w.Code)
 	}
 }
 
-func testCheckJWTRequests(req *http.Request) int {
+func sendTestRequest(req *http.Request, service service.Service) *httptest.ResponseRecorder {
 	w, r, c := setupTestControllerAndHTTPRecorder()
 
-	r.GET("/ping", checkJWT(), c.Ping)
+	r.POST("/collection", c.AddToCollection)
+	r.GET("/ping", c.Ping)
+
+	c.Service = &service
 
 	r.ServeHTTP(w, req)
 
-	return w.Code
+	return w
 }
 
+func getTestService() service.Service {
+	repo := service.InMemoryStore()
+	s := service.Service{
+		Repository: repo,
+	}
+
+	return s
+}
 func setupTestControllerAndHTTPRecorder() (*httptest.ResponseRecorder, *gin.Engine, *Controller) {
 	w := httptest.NewRecorder()
 	r := gin.Default()
@@ -133,11 +149,18 @@ func verifyHTTPResponseBody(expected string, actual string, t *testing.T) {
 }
 
 func getSerializedTestCard() []byte {
-	card := model.Card{
+	base := model.Base{
 		Year:   2020,
-		Maker:  "Upper Deck",
+		Make:   "Upper Deck",
 		Set:    "Series One",
 		Player: "Brock Boeser",
+	}
+
+	insert := model.Insert{}
+
+	card := model.Card{
+		Base:   base,
+		Insert: insert,
 	}
 
 	b, _ := json.Marshal(card)
@@ -152,39 +175,64 @@ func checkError(err error, t *testing.T) {
 	}
 }
 
-func getBearerTokenForTest() string {
-	auth := new(AuthResponse)
+// // TestAuthenticatedAPICall verifies a 200 is received if authorized
+// func TestAuthenticatedAPICall(t *testing.T) {
+// 	req, err := http.NewRequest("GET", "/ping", nil)
 
-	url := os.Getenv("AUTH0_URL")
+// 	req.Header.Set("authorization", getBearerTokenForTest())
 
-	clientID := os.Getenv("AUTH0_CLIENT_ID")
-	secretID := os.Getenv("AUTH0_SECRET_ID")
-	audience := os.Getenv("AUTH0_AUDIENCE")
+// 	checkError(err, t)
 
-	payload := strings.NewReader(
-		"{\"client_id\":" + "\"" + clientID + "\"" +
-			",\"client_secret\":" + "\"" + secretID + "\"" +
-			",\"audience\":" + "\"" + audience + "\"" +
-			",\"grant_type\":\"client_credentials\"}")
+// 	responseCode := testCheckJWTRequests(req)
 
-	req, _ := http.NewRequest("POST", url, payload)
+// 	if responseCode != http.StatusOK {
+// 		t.Errorf("Expected to get HTTP 200, but got %d", responseCode)
+// 	}
+// }
 
-	req.Header.Add("content-type", "application/json")
+// func testCheckJWTRequests(req *http.Request) int {
+// 	w, r, c := setupTestControllerAndHTTPRecorder()
 
-	res, err := http.DefaultClient.Do(req)
+// 	r.GET("/ping", checkJWT(), c.Ping)
 
-	if err != nil {
-		panic(err)
-	}
+// 	r.ServeHTTP(w, req)
 
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
+// 	return w.Code
+// }
 
-	err = json.Unmarshal(body, auth)
+// func getBearerTokenForTest() string {
+// 	auth := new(AuthResponse)
 
-	if err != nil {
-		panic(err)
-	}
+// 	url := os.Getenv("AUTH0_URL")
 
-	return auth.Type + " " + auth.Token
-}
+// 	clientID := os.Getenv("AUTH0_CLIENT_ID")
+// 	secretID := os.Getenv("AUTH0_SECRET_ID")
+// 	audience := os.Getenv("AUTH0_AUDIENCE")
+
+// 	payload := strings.NewReader(
+// 		"{\"client_id\":" + "\"" + clientID + "\"" +
+// 			",\"client_secret\":" + "\"" + secretID + "\"" +
+// 			",\"audience\":" + "\"" + audience + "\"" +
+// 			",\"grant_type\":\"client_credentials\"}")
+
+// 	req, _ := http.NewRequest("POST", url, payload)
+
+// 	req.Header.Add("content-type", "application/json")
+
+// 	res, err := http.DefaultClient.Do(req)
+
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	defer res.Body.Close()
+// 	body, _ := ioutil.ReadAll(res.Body)
+
+// 	err = json.Unmarshal(body, auth)
+
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	return auth.Type + " " + auth.Token
+// }

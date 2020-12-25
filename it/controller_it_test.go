@@ -11,30 +11,19 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
-	_ "gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 // TestAddsNewCardToRepo verifies behaviour for adding a new card.
 func TestAddsNewCardToRepo(t *testing.T) {
-	card := model.Card{
-		Year:   2020,
-		Maker:  "Upper Deck",
-		Set:    "Series One",
-		Player: "Brock Boeser",
-	}
-
 	w, r, c := setupTestControllerAndHTTPRecorder()
 
-	db, err := setupDatabase()
+	repo, err := service.MongoDB()
 
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	repo := service.Database(db)
 	s := service.Service{
 		Repository: repo,
 	}
@@ -43,7 +32,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 
 	r.POST("/collection", c.AddToCollection)
 
-	b, _ := json.Marshal(card)
+	b := getSerializedTestCard()
 	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
 
 	if err != nil {
@@ -54,7 +43,7 @@ func TestAddsNewCardToRepo(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	// Verify that the POST request succeeded with HTTP 200
-	if w.Code != http.StatusOK {
+	if w.Code != http.StatusAccepted {
 		t.Errorf("Expected to get HTTP 200, but got %d", w.Code)
 		t.Fail()
 	}
@@ -71,21 +60,32 @@ func TestAddsNewCardToRepo(t *testing.T) {
 	}
 }
 
+func getSerializedTestCard() []byte {
+	base := model.Base{
+		Year:   2020,
+		Make:   "Upper Deck",
+		Set:    "Series One",
+		Player: "Brock Boeser",
+	}
+
+	insert := model.Insert{}
+
+	card := model.Card{
+		Base:   base,
+		Insert: insert,
+	}
+
+	b, _ := json.Marshal(card)
+
+	return b
+}
+
 func setupTestControllerAndHTTPRecorder() (*httptest.ResponseRecorder, *gin.Engine, *controller.Controller) {
 	w := httptest.NewRecorder()
 	r := gin.Default()
 	c := new(controller.Controller)
 
 	return w, r, c
-}
-
-func setupDatabase() (*gorm.DB, error) {
-	dsn := "user=tester dbname=cardkeeper port=26257 sslmode=disable"
-	//	dsn := "user=keeperuser dbname=cardkeeper port=26257 sslmode=prefer sslrootcert=certs/ca.crt sslcert=certs/client.keeperuser.crt sslkey=certs/client.keeperuser.key"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	db.Migrator().CreateTable(&model.Card{})
-
-	return db, err
 }
 
 func verifyHTTPResponseBody(expected string, actual string, t *testing.T) {

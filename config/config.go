@@ -10,11 +10,10 @@ import (
 type Configuration interface {
 	DBConfigs() DBConfiguration
 	APIAllowedOrigin() string
-	APILogPath() string
 	APIListenPort() string
 }
 
-// DBConfiguration settings
+// DBConfiguration holds the database configuration values
 type DBConfiguration struct {
 	Type     string
 	Host     string
@@ -27,7 +26,6 @@ type configuration struct {
 	DB  DBConfiguration
 	API struct {
 		AllowedOrigin string
-		LogPath       string
 		ListenPort    string
 	}
 }
@@ -38,8 +36,7 @@ func Default() Configuration {
 
 	c.DB.Type = "in-memory"
 	c.API.AllowedOrigin = "http://localhost:4200"
-	c.API.LogPath = "/var/log/card-keeper-api/card-keeper-api.log"
-
+	c.API.ListenPort = "8080"
 	return c
 }
 
@@ -65,10 +62,6 @@ func (c *configuration) DBConfigs() DBConfiguration {
 
 func (c *configuration) APIAllowedOrigin() string {
 	return c.API.AllowedOrigin
-}
-
-func (c *configuration) APILogPath() string {
-	return c.API.LogPath
 }
 
 func (c *configuration) APIListenPort() string {

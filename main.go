@@ -4,8 +4,7 @@ import (
 	"card-keeper-api/config"
 	"card-keeper-api/controller"
 	"flag"
-	"io"
-	"os"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,14 +24,8 @@ func main() {
 		configs = config.NewFromFile(c)
 	}
 
-	initLogging(configs.APILogPath())
+	server := controller.InitServer(configs)
 
-	r := controller.InitRouter()
-
-	r.Run(":8080")
-}
-
-func initLogging(logpath string) {
-	f, _ := os.Create(logpath)
-	gin.DefaultWriter = io.MultiWriter(f)
+	port := fmt.Sprintf(":%s", configs.APIListenPort())
+	server.Run(port)
 }

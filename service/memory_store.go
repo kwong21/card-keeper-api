@@ -1,6 +1,9 @@
 package service
 
-import "card-keeper-api/model"
+import (
+	"card-keeper-api/model"
+	"reflect"
+)
 
 type memoryStore struct {
 	Cards []model.Card
@@ -18,7 +21,19 @@ func (r *memoryStore) GetAll() (*[]model.Card, error) {
 }
 
 func (r *memoryStore) AddCard(card model.Card) error {
-	r.Cards = append(r.Cards, card)
+	var err error
 
-	return nil
+	for _, c := range r.Cards {
+		if card.Base.Player == c.Base.Player {
+			if reflect.DeepEqual(card, c) {
+				err = &DuplicateError{}
+			}
+		}
+	}
+
+	if err == nil {
+		r.Cards = append(r.Cards, card)
+	}
+
+	return err
 }
