@@ -1,6 +1,6 @@
 {
     "DB": {
-        "Type": "mongodb"
+        "Type": "in-memory"
     },
     "API": {
         "AllowedOrigin": "http://localhost:4200",

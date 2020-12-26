@@ -15,9 +15,12 @@ type APILogger struct {
 // Fields wraps logrus.Fields, which is a map[string]interface{}
 type Fields logrus.Fields
 
+// LogFile path
+const LogFile = "logs/card-keeper-api.log"
+
 // NewLogger initializes the APILogger
 func NewLogger() *APILogger {
-	logFile, err := os.OpenFile("card-keeper-api.log", os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 
 	if err != nil {
 		fmt.Println("Can't open log file", err)
@@ -33,9 +36,9 @@ func NewLogger() *APILogger {
 
 	baseLogger.SetReportCaller(true)
 
-	javLogger := &APILogger{baseLogger}
+	apiLogger := &APILogger{baseLogger}
 
-	return javLogger
+	return apiLogger
 }
 
 // LogInfo writes Info log statements.
