@@ -16,6 +16,7 @@
 docker/cockroach-data/*
 
 # Log files
+*.log
 logs/*.log
 
 # Local env file
