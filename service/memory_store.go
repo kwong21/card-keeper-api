@@ -10,10 +10,10 @@ type memoryStore struct {
 }
 
 //InMemoryStore returns an in-memory repository
-func InMemoryStore() Repository {
+func InMemoryStore() (Repository, error) {
 	return &memoryStore{
 		Cards: make([]model.Card, 0),
-	}
+	}, nil
 }
 
 func (r *memoryStore) GetAll() (*[]model.Card, error) {

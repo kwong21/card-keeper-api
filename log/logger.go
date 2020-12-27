@@ -20,7 +20,7 @@ const LogFile = "logs/card-keeper-api.log"
 
 // NewLogger initializes the APILogger
 func NewLogger() *APILogger {
-	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	logFile, err := os.OpenFile(LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 
 	if err != nil {
 		fmt.Println("Can't open log file", err)

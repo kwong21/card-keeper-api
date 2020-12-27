@@ -24,6 +24,11 @@ func TestReturnValuesInFile(t *testing.T) {
 		fail = true
 	}
 
+	if c.DBConfigs().ReplicaSet != "" {
+		t.Errorf("Expected empty string for replica set but got %s", c.DBConfigs().ReplicaSet)
+		fail = true
+	}
+
 	if c.APIAllowedOrigin() != "http://localhost:4200" {
 		t.Errorf("Expected http://localhost:4200, but got %s", c.APIAllowedOrigin())
 		fail = true

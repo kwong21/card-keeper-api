@@ -1,6 +1,11 @@
 {
     "DB": {
-        "Type": "in-memory"
+        "Type": "mongodb",
+        "Host": "localhost",
+        "User": "",
+        "Password": "",
+        "Database": "",
+        "ReplicaSet": ""
     },
     "API": {
         "AllowedOrigin": "http://localhost:4200",

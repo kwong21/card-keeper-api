@@ -1,9 +1,11 @@
 package service
 
 import (
+	"card-keeper-api/config"
 	logger "card-keeper-api/log"
 	"card-keeper-api/model"
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,15 +14,25 @@ import (
 )
 
 type mongoStore struct {
-	db *mongo.Client
+	db *mongo.Database
 }
 
 var mongoLogger = logger.NewLogger()
 
 // MongoDB returns the MongoDB service.
-func MongoDB() (Repository, error) {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+func MongoDB(configs config.DBConfiguration) (Repository, error) {
+	uri := buildConnectionURI(configs)
+
+	clientOptions := options.Client().ApplyURI(uri)
+
 	client, err := mongo.Connect(context.TODO(), clientOptions)
+
+	if err != nil {
+		mongoLogger.LogErrorWithFields(
+			logger.Fields{
+				"Error": err,
+			}, "Could not connect to mongodb!")
+	}
 
 	err = client.Ping(context.TODO(), nil)
 
@@ -30,13 +42,15 @@ func MongoDB() (Repository, error) {
 				"Error": err,
 			}, "Could not connect to mongodb!")
 	}
-	createIndexForCardsCollection(client)
+
+	mongodb := client.Database(configs.Database)
+
 	return &mongoStore{
-		db: client,
+		db: mongodb,
 	}, err
 }
 
-func createIndexForCardsCollection(client *mongo.Client) {
+func createIndexForCardsCollection(client *mongo.Database) {
 	mod := mongo.IndexModel{
 		Keys:    bson.M{"base.year": 1, "base.set": 1, "base.make": 1, "base.player": 1},
 		Options: options.Index().SetUnique(true),
@@ -45,7 +59,7 @@ func createIndexForCardsCollection(client *mongo.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cardsCollection := client.Database("card-keeper").Collection("cards")
+	cardsCollection := client.Collection("cards")
 
 	_, err := cardsCollection.Indexes().CreateOne(ctx, mod)
 
@@ -59,7 +73,7 @@ func createIndexForCardsCollection(client *mongo.Client) {
 }
 
 func (r *mongoStore) GetAll() (*[]model.Card, error) {
-	cardsCollection := r.db.Database("card-keeper").Collection("cards")
+	cardsCollection := r.db.Collection("cards")
 
 	var cards []model.Card
 
@@ -85,11 +99,9 @@ func (r *mongoStore) GetAll() (*[]model.Card, error) {
 }
 
 func (r *mongoStore) AddCard(card model.Card) error {
-	cardsCollection := r.db.Database("card-keeper").Collection("cards")
+	cardsCollection := r.db.Collection("cards")
 
-	opts := options.Update().SetUpsert(true)
-
-	insert, err := cardsCollection.UpdateOne(context.TODO(), nil, nil, opts)
+	insert, err := cardsCollection.InsertOne(context.TODO(), card)
 
 	if err != nil {
 		mongoLogger.LogErrorWithFields(
@@ -100,10 +112,32 @@ func (r *mongoStore) AddCard(card model.Card) error {
 	} else {
 		mongoLogger.LogInfoWithFields(
 			logger.Fields{
-				"id":   insert.UpsertedID,
+				"id":   insert.InsertedID,
 				"Card": card,
 			}, "card inserted to collection")
 	}
 
 	return err
+}
+
+func buildConnectionURI(dbConfig config.DBConfiguration) string {
+	var auth string
+	var replicaSet string
+
+	if dbConfig.User != "" && dbConfig.Password != "" {
+		auth = fmt.Sprintf("%s:%s@", dbConfig.User, dbConfig.Password)
+	} else {
+		mongoLogger.LogInfo("auth-less mongodb connection")
+	}
+
+	if dbConfig.ReplicaSet != "" {
+		replicaSet = fmt.Sprintf("?replicaSet=%s", dbConfig.ReplicaSet)
+	} else {
+		mongoLogger.LogInfo("no replica set configured")
+	}
+
+	hosts := dbConfig.Host
+	uri := fmt.Sprintf("mongodb://%s%s/%s", auth, hosts, replicaSet)
+
+	return uri
 }

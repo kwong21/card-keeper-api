@@ -4,6 +4,7 @@ import (
 	"card-keeper-api/config"
 	"card-keeper-api/middleware"
 	"card-keeper-api/service"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,10 +36,26 @@ func checkJWT() gin.HandlerFunc {
 	}
 }
 
+func initializeRepository(dbConfig config.DBConfiguration) (service.Repository, error) {
+	var configuredRepo service.Repository
+	var err error
+
+	switch repo := dbConfig.Type; repo {
+	case "in-memory":
+		configuredRepo, err = service.InMemoryStore()
+	case "mongodb":
+		configuredRepo, err = service.MongoDB(dbConfig)
+	default:
+		err = errors.New("unsupported repository")
+	}
+
+	return configuredRepo, err
+}
+
 func setupController(configs config.DBConfiguration) *Controller {
 	controller := new(Controller)
 
-	repo, _ := service.MongoDB()
+	repo, _ := service.MongoDB(configs)
 	s := service.Service{
 		Repository: repo,
 	}

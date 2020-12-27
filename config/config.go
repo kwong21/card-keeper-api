@@ -15,11 +15,16 @@ type Configuration interface {
 
 // DBConfiguration holds the database configuration values
 type DBConfiguration struct {
-	Type     string
-	Host     string
-	User     string
-	Password string
-	Database string
+	Type       string
+	Host       string
+	User       string
+	Password   string
+	Database   string
+	ReplicaSet string
+}
+
+// AuthConfiguration holds the authentication configuration values
+type AuthConfiguration struct {
 }
 
 type configuration struct {
@@ -35,6 +40,7 @@ func Default() Configuration {
 	c := new(configuration)
 
 	c.DB.Type = "in-memory"
+	// REMOVE
 	c.API.AllowedOrigin = "http://localhost:4200"
 	c.API.ListenPort = "8080"
 	return c

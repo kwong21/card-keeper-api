@@ -127,7 +127,7 @@ func sendTestRequest(req *http.Request, service service.Service) *httptest.Respo
 }
 
 func getTestService() service.Service {
-	repo := service.InMemoryStore()
+	repo, _ := service.InMemoryStore()
 	s := service.Service{
 		Repository: repo,
 	}
