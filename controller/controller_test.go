@@ -136,7 +136,7 @@ func getTestService() service.Service {
 }
 func setupTestControllerAndHTTPRecorder() (*httptest.ResponseRecorder, *gin.Engine, *Controller) {
 	w := httptest.NewRecorder()
-	r := gin.Default()
+	r := gin.New()
 	c := new(Controller)
 
 	return w, r, c

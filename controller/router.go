@@ -2,6 +2,7 @@ package controller
 
 import (
 	"card-keeper-api/config"
+	logger "card-keeper-api/log"
 	"card-keeper-api/middleware"
 	"card-keeper-api/service"
 	"errors"
@@ -9,10 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var routerLogger = logger.NewLogger()
+
 // InitServer registers the routes for the application
 func InitServer(configs config.Configuration) *gin.Engine {
 	router := gin.New()
-	router.Use(middleware.LogToFile())
+
+	if configs.DoLogToFile() {
+		router.Use(middleware.LogToFile())
+	} else {
+		router.Use(gin.Logger())
+	}
+
 	router.Use(middleware.CorsMiddleware(configs.APIAllowedOrigin()))
 
 	controller := setupController(configs.DBConfigs())
@@ -20,7 +29,6 @@ func InitServer(configs config.Configuration) *gin.Engine {
 	v1 := router.Group("v1")
 
 	v1.POST("/collection", checkJWT(), controller.AddToCollection)
-
 	router.GET("/ping", controller.Ping)
 
 	return router
@@ -34,6 +42,28 @@ func checkJWT() gin.HandlerFunc {
 			c.AbortWithStatus(401)
 		}
 	}
+}
+
+func setupController(configs config.DBConfiguration) *Controller {
+	controller := new(Controller)
+
+	repo, err := initializeRepository(configs)
+
+	if err != nil {
+		routerLogger.LogErrorWithFields(
+			logger.Fields{
+				"err": err,
+			}, "not able to instantiate the requested repo configuration")
+		routerLogger.LogFatal("fatal error creating controller")
+	}
+
+	s := service.Service{
+		Repository: repo,
+	}
+
+	controller.Service = &s
+
+	return controller
 }
 
 func initializeRepository(dbConfig config.DBConfiguration) (service.Repository, error) {
@@ -50,17 +80,4 @@ func initializeRepository(dbConfig config.DBConfiguration) (service.Repository, 
 	}
 
 	return configuredRepo, err
-}
-
-func setupController(configs config.DBConfiguration) *Controller {
-	controller := new(Controller)
-
-	repo, _ := service.MongoDB(configs)
-	s := service.Service{
-		Repository: repo,
-	}
-
-	controller.Service = &s
-
-	return controller
 }
