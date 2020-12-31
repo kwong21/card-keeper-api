@@ -45,31 +45,11 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 
 	mongodb := client.Database(configs.Database)
 
+	createIndexForCardsCollection(mongodb)
+
 	return &mongoStore{
 		db: mongodb,
 	}, err
-}
-
-func createIndexForCardsCollection(client *mongo.Database) {
-	mod := mongo.IndexModel{
-		Keys:    bson.M{"base.year": 1, "base.set": 1, "base.make": 1, "base.player": 1},
-		Options: options.Index().SetUnique(true),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cardsCollection := client.Collection("cards")
-
-	_, err := cardsCollection.Indexes().CreateOne(ctx, mod)
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.Fields{
-				"Error": err,
-			}, "not able to create the index for cards")
-	}
-
 }
 
 func (r *mongoStore) GetAll() (*[]model.Card, error) {
@@ -100,6 +80,7 @@ func (r *mongoStore) GetAll() (*[]model.Card, error) {
 
 func (r *mongoStore) AddCard(card model.Card) error {
 	cardsCollection := r.db.Collection("cards")
+	var serviceError error = nil
 
 	insert, err := cardsCollection.InsertOne(context.TODO(), card)
 
@@ -109,6 +90,8 @@ func (r *mongoStore) AddCard(card model.Card) error {
 				"Error": err,
 				"Card":  card,
 			}, "not able to add card to collection")
+
+		serviceError = wrapMongoDBError(err.(mongo.WriteException))
 	} else {
 		mongoLogger.LogInfoWithFields(
 			logger.Fields{
@@ -117,7 +100,7 @@ func (r *mongoStore) AddCard(card model.Card) error {
 			}, "card inserted to collection")
 	}
 
-	return err
+	return serviceError
 }
 
 func buildConnectionURI(dbConfig config.DBConfiguration) string {
@@ -140,4 +123,40 @@ func buildConnectionURI(dbConfig config.DBConfiguration) string {
 	uri := fmt.Sprintf("mongodb://%s%s/%s", auth, hosts, replicaSet)
 
 	return uri
+}
+
+func createIndexForCardsCollection(client *mongo.Database) {
+	mod := mongo.IndexModel{
+		Keys:    bson.M{"base.year": 1, "base.set": 1, "base.make": 1, "base.player": 1},
+		Options: options.Index().SetUnique(true),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cardsCollection := client.Collection("cards")
+
+	_, err := cardsCollection.Indexes().CreateOne(ctx, mod)
+
+	if err != nil {
+		mongoLogger.LogErrorWithFields(
+			logger.Fields{
+				"Error": err,
+			}, "not able to create the index for cards")
+	}
+}
+
+func wrapMongoDBError(err mongo.WriteException) error {
+	var wrappedError error
+
+	switch mongoErrorCode := err.WriteErrors[0].Code; mongoErrorCode {
+	case 11000:
+		wrappedError = &DuplicateError{}
+	default:
+		wrappedError = &UnknownError{
+			Message: err.WriteConcernError.Message,
+		}
+	}
+
+	return wrappedError
 }

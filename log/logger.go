@@ -20,15 +20,15 @@ const LogFile = "logs/card-keeper-api.log"
 
 // NewLogger initializes the APILogger
 func NewLogger() *APILogger {
-	logFile, err := os.OpenFile(LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-
-	if err != nil {
-		fmt.Println("Can't open log file", err)
-	}
-
+	logFile, err := openLogFile()
 	baseLogger := logrus.New()
 
-	baseLogger.Out = logFile
+	if err != nil {
+		fmt.Println("Logging to STD OUT since we can't create log file")
+		baseLogger.Out = os.Stdout
+	} else {
+		baseLogger.Out = logFile
+	}
 
 	baseLogger.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
@@ -41,9 +41,24 @@ func NewLogger() *APILogger {
 	return apiLogger
 }
 
+func openLogFile() (*os.File, error) {
+	logFile, err := os.OpenFile(LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+
+	if err != nil {
+		fmt.Println("Can't open log file - DEFAULTING TO STD OUT", err)
+	}
+
+	return logFile, err
+}
+
 // LogInfo writes Info log statements.
 func (l *APILogger) LogInfo(message string) {
 	l.Info(message)
+}
+
+// LogFatal logs a fatal error
+func (l *APILogger) LogFatal(message string) {
+	l.Fatal(message)
 }
 
 // LogInfoWithFields writes Info log statements with fields

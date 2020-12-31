@@ -16,12 +16,7 @@ var routerLogger = logger.NewLogger()
 func InitServer(configs config.Configuration) *gin.Engine {
 	router := gin.New()
 
-	if configs.DoLogToFile() {
-		router.Use(middleware.LogToFile())
-	} else {
-		router.Use(gin.Logger())
-	}
-
+	router.Use(middleware.LogToFile())
 	router.Use(middleware.CorsMiddleware(configs.APIAllowedOrigin()))
 
 	controller := setupController(configs.DBConfigs())

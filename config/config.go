@@ -33,6 +33,7 @@ type configuration struct {
 		AllowedOrigin string
 		ListenPort    string
 	}
+	UseLoggerMiddleWare bool
 }
 
 // Default configuration for the API server
@@ -40,9 +41,10 @@ func Default() Configuration {
 	c := new(configuration)
 
 	c.DB.Type = "in-memory"
-	// REMOVE
 	c.API.AllowedOrigin = "http://localhost:4200"
 	c.API.ListenPort = "8080"
+	c.UseLoggerMiddleWare = false
+
 	return c
 }
 

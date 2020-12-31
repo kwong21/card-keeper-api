@@ -26,8 +26,34 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'go test `go list ./... | grep -v it`'
+                    sh 'go test'
                 }
+            }
+        }
+
+        stage('Pre integration test') {
+            steps {
+                echo 'Bringing up docker container for integration test'
+                sh 'docker-compose up -d'
+            }
+        }
+
+        stage('Run integration tests') {
+            steps{
+                withEnv(["PATH+GO=${GOPATH}/bin"]){
+                    echo 'Running vetting'
+                    sh 'go vet .'
+                    echo 'Running linting'
+                    sh 'golint .'
+                    echo 'Running test'
+                    sh 'go test --tags=integration'
+                }
+            }
+        }
+
+        stage('Stop containers') {
+            steps{
+                sh 'docker-compose down'
             }
         }
 
