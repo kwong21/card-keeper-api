@@ -26,7 +26,7 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'go test'
+                    sh 'go test `go list ./...`'
                 }
             }
         }
@@ -46,7 +46,7 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'go test --tags=integration'
+                    sh 'go test `go list ./...` --tags=integration'
                 }
             }
         }
