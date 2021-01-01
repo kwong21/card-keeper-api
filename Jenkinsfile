@@ -34,7 +34,7 @@ pipeline {
         stage('Pre integration test') {
             steps {
                 echo 'Bringing up docker container for integration test'
-                sh 'docker-compose up -d'
+                sh 'sudo docker-compose up -d'
             }
         }
 
@@ -53,7 +53,7 @@ pipeline {
 
         stage('Stop containers') {
             steps{
-                sh 'docker-compose down'
+                sh 'sudo docker-compose down'
             }
         }
 
