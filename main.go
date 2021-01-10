@@ -1,10 +1,11 @@
 package main
 
 import (
-	"card-keeper-api/config"
-	"card-keeper-api/controller"
 	"flag"
 	"fmt"
+
+	"card-keeper-api/controller"
+	config "card-keeper-api/internal/configs"
 
 	"github.com/gin-gonic/gin"
 )

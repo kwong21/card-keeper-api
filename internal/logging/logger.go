@@ -1,4 +1,4 @@
-package log
+package logging
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ type APILogger struct {
 	*logrus.Logger
 }
 
-// Fields wraps logrus.Fields, which is a map[string]interface{}
-type Fields logrus.Fields
+// LogFields wraps logrus.Fields, which is a map[string]interface{}
+type LogFields logrus.Fields
 
 // LogFile path
 const LogFile = "logs/card-keeper-api.log"
@@ -62,16 +62,16 @@ func (l *APILogger) LogFatal(message string) {
 }
 
 // LogInfoWithFields writes Info log statements with fields
-func (l *APILogger) LogInfoWithFields(f Fields, message string) {
+func (l *APILogger) LogInfoWithFields(f LogFields, message string) {
 	l.WithFields(logrus.Fields(f)).Info(message)
 }
 
 // LogErrorWithFields write Error log statements with fields
-func (l *APILogger) LogErrorWithFields(f Fields, message string) {
+func (l *APILogger) LogErrorWithFields(f LogFields, message string) {
 	l.WithFields(logrus.Fields(f)).Error(message)
 }
 
 // LogWarnWithFields write Warn log statements with fields
-func (l *APILogger) LogWarnWithFields(f Fields, message string) {
+func (l *APILogger) LogWarnWithFields(f LogFields, message string) {
 	l.WithFields(logrus.Fields(f)).Warn(message)
 }

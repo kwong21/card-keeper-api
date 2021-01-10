@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"card-keeper-api/log"
 	"time"
+
+	logger "card-keeper-api/internal/logging"
 
 	"github.com/gin-gonic/gin"
 )
 
-var logger = log.NewLogger()
+var middlewareLogger = logger.NewLogger()
 
 // LogToFile logs output to a file on disk
 func LogToFile() gin.HandlerFunc {
@@ -29,7 +30,7 @@ func LogToFile() gin.HandlerFunc {
 		// Request IP
 		clientIP := c.ClientIP()
 		// Log format
-		logger.Infof("| %3d | %13v | %15s | %s | %s |",
+		middlewareLogger.Infof("| %3d | %13v | %15s | %s | %s |",
 			statusCode,
 			latencyTime,
 			clientIP,

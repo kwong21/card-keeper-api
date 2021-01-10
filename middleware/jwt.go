@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
+
+	configs "card-keeper-api/internal/configs"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -26,30 +27,29 @@ type JSONWebKeys struct {
 	X5c []string `json:"x5c"`
 }
 
-// JWTMiddleware authenticates requests using Auth0
-func JWTMiddleware() *jwtmiddleware.JWTMiddleware {
-
+// GetJWTMiddleware returns the configured middleware to handle JWT auth
+func GetJWTMiddleware(config configs.AuthConfiguration) *jwtmiddleware.JWTMiddleware {
 	return jwtmiddleware.New(
 		jwtmiddleware.Options{
 			ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-				aud := os.Getenv("AUTH0_AUDIENCE")
+				aud := config.Audience
 				checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
 
 				if !checkAud {
 					return token, errors.New("Invalid Audience")
 				}
 
-				iss := os.Getenv("AUTH0_ISSUER")
+				iss := config.Issuer
 				checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
 
 				if !checkIss {
 					return token, errors.New("invalid Issuer")
 				}
 
-				cert, err := getPemCert(token)
+				cert, err := getPemCert(token, config.JWKS)
 
 				if err != nil {
-					panic(err.Error())
+					panic(err)
 				}
 
 				result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
@@ -78,20 +78,21 @@ func CorsMiddleware(allowOrigin string) gin.HandlerFunc {
 	}
 }
 
-func getPemCert(token *jwt.Token) (string, error) {
+func getPemCert(token *jwt.Token, jwksURI string) (string, error) {
 	cert := ""
-	resp, err := http.Get("https://dev-shibatek.us.auth0.com/.well-known/jwks.json")
+	resp, err := http.Get(jwksURI)
 
 	if err != nil {
-		return cert, err
+		return cert, errors.New(resp.Status)
 	}
+
 	defer resp.Body.Close()
 
 	var jwks = Jwks{}
 	err = json.NewDecoder(resp.Body).Decode(&jwks)
 
 	if err != nil {
-		return cert, err
+		return cert, errors.New(resp.Status)
 	}
 
 	for k := range jwks.Keys {

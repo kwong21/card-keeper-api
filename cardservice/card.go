@@ -1,4 +1,4 @@
-package model
+package cardservice
 
 // Card is a wrapper struct with Base card and Insert
 type Card struct {

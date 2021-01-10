@@ -1,9 +1,8 @@
-package service
+package cardservice
 
 import (
-	"card-keeper-api/config"
-	logger "card-keeper-api/log"
-	"card-keeper-api/model"
+	config "card-keeper-api/internal/configs"
+	logger "card-keeper-api/internal/logging"
 	"context"
 	"fmt"
 	"time"
@@ -26,23 +25,6 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(context.TODO(), clientOptions)
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.Fields{
-				"Error": err,
-			}, "Could not connect to mongodb!")
-	}
-
-	err = client.Ping(context.TODO(), nil)
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.Fields{
-				"Error": err,
-			}, "Could not connect to mongodb!")
-	}
-
 	mongodb := client.Database(configs.Database)
 
 	createIndexForCardsCollection(mongodb)
@@ -52,49 +34,28 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 	}, err
 }
 
-func (r *mongoStore) GetAll() (*[]model.Card, error) {
+func (r *mongoStore) GetAll() (*[]Card, error) {
 	cardsCollection := r.db.Collection("cards")
 
-	var cards []model.Card
+	var cards []Card
 
 	cursor, err := cardsCollection.Find(context.TODO(), bson.D{{}})
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.Fields{
-				"Error": err,
-			}, "not able to retrieve cards from collection")
-	}
-
-	if err = cursor.All(context.TODO(), &cards); err != nil {
-		if err != nil {
-			mongoLogger.LogErrorWithFields(
-				logger.Fields{
-					"Error": err,
-				}, "not able to retrieve cards from collection")
-		}
-	}
+	err = cursor.All(context.TODO(), &cards)
 
 	return &cards, err
 }
 
-func (r *mongoStore) AddCard(card model.Card) error {
+func (r *mongoStore) AddCard(card Card) error {
 	cardsCollection := r.db.Collection("cards")
 	var serviceError error = nil
 
 	insert, err := cardsCollection.InsertOne(context.TODO(), card)
 
 	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.Fields{
-				"Error": err,
-				"Card":  card,
-			}, "not able to add card to collection")
-
 		serviceError = wrapMongoDBError(err.(mongo.WriteException))
 	} else {
 		mongoLogger.LogInfoWithFields(
-			logger.Fields{
+			logger.LogFields{
 				"id":   insert.InsertedID,
 				"Card": card,
 			}, "card inserted to collection")
@@ -140,7 +101,7 @@ func createIndexForCardsCollection(client *mongo.Database) {
 
 	if err != nil {
 		mongoLogger.LogErrorWithFields(
-			logger.Fields{
+			logger.LogFields{
 				"Error": err,
 			}, "not able to create the index for cards")
 	}
@@ -151,7 +112,9 @@ func wrapMongoDBError(err mongo.WriteException) error {
 
 	switch mongoErrorCode := err.WriteErrors[0].Code; mongoErrorCode {
 	case 11000:
-		wrappedError = &DuplicateError{}
+		wrappedError = &DuplicateError{
+			Message: err.Error(),
+		}
 	default:
 		wrappedError = &UnknownError{
 			Message: err.WriteConcernError.Message,

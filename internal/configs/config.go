@@ -1,4 +1,4 @@
-package config
+package configs
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ type Configuration interface {
 	DBConfigs() DBConfiguration
 	APIAllowedOrigin() string
 	APIListenPort() string
+	AuthConfiguration() AuthConfiguration
 }
 
 // DBConfiguration holds the database configuration values
@@ -25,6 +26,9 @@ type DBConfiguration struct {
 
 // AuthConfiguration holds the authentication configuration values
 type AuthConfiguration struct {
+	Audience string
+	Issuer   string
+	JWKS     string
 }
 
 type configuration struct {
@@ -33,7 +37,7 @@ type configuration struct {
 		AllowedOrigin string
 		ListenPort    string
 	}
-	UseLoggerMiddleWare bool
+	Auth AuthConfiguration
 }
 
 // Default configuration for the API server
@@ -43,7 +47,6 @@ func Default() Configuration {
 	c.DB.Type = "in-memory"
 	c.API.AllowedOrigin = "http://localhost:4200"
 	c.API.ListenPort = "8080"
-	c.UseLoggerMiddleWare = false
 
 	return c
 }
@@ -74,4 +77,8 @@ func (c *configuration) APIAllowedOrigin() string {
 
 func (c *configuration) APIListenPort() string {
 	return c.API.ListenPort
+}
+
+func (c *configuration) AuthConfiguration() AuthConfiguration {
+	return c.Auth
 }

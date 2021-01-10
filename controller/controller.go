@@ -1,9 +1,8 @@
 package controller
 
 import (
-	logger "card-keeper-api/log"
-	"card-keeper-api/model"
-	"card-keeper-api/service"
+	"card-keeper-api/cardservice"
+
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,14 +10,12 @@ import (
 
 // Controller struct
 type Controller struct {
-	Service *service.Service
+	Service *cardservice.Service
 }
-
-var controllerLogger = logger.NewLogger()
 
 // AddToCollection accepts POST request for adding card to collection
 func (controller *Controller) AddToCollection(c *gin.Context) {
-	var newCard model.Card
+	var newCard cardservice.Card
 	error := c.BindJSON(&newCard)
 
 	if error != nil {
@@ -36,6 +33,22 @@ func (controller *Controller) AddToCollection(c *gin.Context) {
 	return
 }
 
+// GetCollection accepts GET request and get cards in collection
+func (controller *Controller) GetCollection(c *gin.Context) {
+	cards, err := controller.Service.GetAll()
+
+	if err != nil {
+		setResponse(c, "error getting cards", http.StatusInternalServerError)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ok",
+		"cards":   cards,
+	})
+
+	return
+}
+
 // Ping returns status of the API
 func (controller *Controller) Ping(c *gin.Context) {
 	setResponse(c, "pong", http.StatusOK)
@@ -50,7 +63,7 @@ func setResponse(c *gin.Context, m string, s int) *gin.Context {
 
 func checkErrorAndReturnStatus(err error) (string, int) {
 	switch err := err; err.(type) {
-	case *service.DuplicateError:
+	case *cardservice.DuplicateError:
 		return "duplicate item", http.StatusConflict
 	default:
 		return "internal server error", http.StatusInternalServerError

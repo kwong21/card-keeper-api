@@ -1,19 +1,21 @@
 package controller
 
 import (
-	"card-keeper-api/config"
-	logger "card-keeper-api/log"
-	"card-keeper-api/middleware"
-	"card-keeper-api/service"
 	"errors"
 
+	"card-keeper-api/cardservice"
+	configs "card-keeper-api/internal/configs"
+	logger "card-keeper-api/internal/logging"
+	"card-keeper-api/middleware"
+
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/gin-gonic/gin"
 )
 
 var routerLogger = logger.NewLogger()
 
 // InitServer registers the routes for the application
-func InitServer(configs config.Configuration) *gin.Engine {
+func InitServer(configs configs.Configuration) *gin.Engine {
 	router := gin.New()
 
 	router.Use(middleware.LogToFile())
@@ -23,36 +25,39 @@ func InitServer(configs config.Configuration) *gin.Engine {
 
 	v1 := router.Group("v1")
 
-	v1.POST("/collection", checkJWT(), controller.AddToCollection)
+	jwtMiddleware := middleware.GetJWTMiddleware(configs.AuthConfiguration())
+
+	v1.GET("/collection", checkJWT(jwtMiddleware), controller.GetCollection)
+	v1.POST("/collection", checkJWT(jwtMiddleware), controller.AddToCollection)
+
 	router.GET("/ping", controller.Ping)
 
 	return router
 }
 
-func checkJWT() gin.HandlerFunc {
+func checkJWT(jwtMiddleware *jwtmiddleware.JWTMiddleware) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		jwtMiddleware := middleware.JWTMiddleware()
-
 		if err := jwtMiddleware.CheckJWT(c.Writer, c.Request); err != nil {
+			routerLogger.LogInfo(err.Error())
 			c.AbortWithStatus(401)
 		}
 	}
 }
 
-func setupController(configs config.DBConfiguration) *Controller {
+func setupController(configs configs.DBConfiguration) *Controller {
 	controller := new(Controller)
 
 	repo, err := initializeRepository(configs)
 
 	if err != nil {
 		routerLogger.LogErrorWithFields(
-			logger.Fields{
+			logger.LogFields{
 				"err": err,
 			}, "not able to instantiate the requested repo configuration")
 		routerLogger.LogFatal("fatal error creating controller")
 	}
 
-	s := service.Service{
+	s := cardservice.Service{
 		Repository: repo,
 	}
 
@@ -61,15 +66,15 @@ func setupController(configs config.DBConfiguration) *Controller {
 	return controller
 }
 
-func initializeRepository(dbConfig config.DBConfiguration) (service.Repository, error) {
-	var configuredRepo service.Repository
+func initializeRepository(dbConfig configs.DBConfiguration) (cardservice.Repository, error) {
+	var configuredRepo cardservice.Repository
 	var err error
 
 	switch repo := dbConfig.Type; repo {
 	case "in-memory":
-		configuredRepo, err = service.InMemoryStore()
+		configuredRepo, err = cardservice.InMemoryStore()
 	case "mongodb":
-		configuredRepo, err = service.MongoDB(dbConfig)
+		configuredRepo, err = cardservice.MongoDB(dbConfig)
 	default:
 		err = errors.New("unsupported repository")
 	}

@@ -1,26 +1,25 @@
-package service
+package cardservice
 
 import (
-	"card-keeper-api/model"
 	"reflect"
 )
 
 type memoryStore struct {
-	Cards []model.Card
+	Cards []Card
 }
 
 //InMemoryStore returns an in-memory repository
 func InMemoryStore() (Repository, error) {
 	return &memoryStore{
-		Cards: make([]model.Card, 0),
+		Cards: make([]Card, 0),
 	}, nil
 }
 
-func (r *memoryStore) GetAll() (*[]model.Card, error) {
+func (r *memoryStore) GetAll() (*[]Card, error) {
 	return &r.Cards, nil
 }
 
-func (r *memoryStore) AddCard(card model.Card) error {
+func (r *memoryStore) AddCard(card Card) error {
 	var err error
 
 	for _, c := range r.Cards {

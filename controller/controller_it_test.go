@@ -1,103 +1,95 @@
-// +build integration
-
 package controller
 
 import (
-	"bytes"
-	"card-keeper-api/config"
+	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
 var engine *gin.Engine
-var controller *Controller
+var itController *Controller
 
 func init() {
-	engine, controller = configureITTestEnvironment()
+	engine, itController = configureITTestEnvironment()
 
-	engine.POST("/collection", controller.AddToCollection)
+	engine.GET("/collection", itController.GetCollection)
+	engine.POST("/collection", itController.AddToCollection)
 }
 
-// TestAddNewCardToRepoIT verifies behaviour for adding a new card.
-func TestAddNewCardToRepoIT(t *testing.T) {
-	b := getSerializedTestCard()
-	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
-
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
+// TestAddNewCardToRepoIntegration verifies behaviour for adding a new card.
+func TestAddNewCardToRepoIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
 	}
 
-	httpResponseRecorder := httptest.NewRecorder()
-	recordRequest(req, httpResponseRecorder)
+	b := getSerializedTestCard()
+	recordedPOSTResponse, err := makeAddCardRequestToHTTPServer(b, engine)
+
+	if err != nil {
+		t.Error("Failed to make POST request")
+		t.Fail()
+	}
 
 	// Verify that the POST request succeeded with HTTP 200
-	if httpResponseRecorder.Code != http.StatusAccepted {
-		t.Errorf("Expected to get HTTP 202, but got %d", httpResponseRecorder.Code)
+	if recordedPOSTResponse.Code != http.StatusAccepted {
+		t.Errorf("Expected to get HTTP 202, but got %d", recordedPOSTResponse.Code)
 		t.Fail()
 	}
 
 	// Verify message body gives `ok`
 	expected := `{"message":"ok"}`
-	verifyHTTPResponseBody(expected, httpResponseRecorder.Body.String(), t)
+	verifyHTTPResponseBody(expected, recordedPOSTResponse.Body.String(), t)
 
-	// Verify that the card is in the Stored
-	cards := controller.Service.GetAll()
+	recordedGETResponse, err := makeGetCardsRequesttToHTTPServer(engine)
 
-	if len(*cards) != 1 {
-		t.Errorf("Expected to get 1 card, but got %d", len(*cards))
+	if err != nil {
+		t.Error("Failed to make GET request")
 		t.Fail()
 	}
 
-	httpResponseRecorder.Flush()
-}
-
-// TestDuplicateCardNotAdded verifies that duplicates are not added to collection
-func TestDuplicateCardNotAdded(t *testing.T) {
-	b := getSerializedTestCard()
-	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
-
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
+	if recordedGETResponse.Code != http.StatusOK {
+		t.Errorf("Expected to get HTTP 200, but got %d", recordedGETResponse.Code)
+		t.Fail()
 	}
 
-	httpResponseRecorder := httptest.NewRecorder()
-	recordRequest(req, httpResponseRecorder)
+	response := getCollectionResponse{}
+
+	err = json.Unmarshal(recordedGETResponse.Body.Bytes(), &response)
+
+	if err != nil {
+		t.Errorf("Failed to unmarshal get response %s", err)
+		t.Fail()
+	}
+
+	if len(response.Cards) != 1 {
+		t.Errorf("Expected to find one card returned after POST but got %d", len(response.Cards))
+		t.Fail()
+	}
+}
+
+// TestDuplicateCardNotAddedIntegration verifies that duplicates are not added to collection
+func TestDuplicateCardNotAddedIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	b := getSerializedTestCard()
+	recordedPOSTResponse, err := makeAddCardRequestToHTTPServer(b, engine)
+
+	if err != nil {
+		t.Error("Error making POST request")
+		t.Fail()
+	}
 
 	// Verify that the POST request failed with 409
-	if httpResponseRecorder.Code != http.StatusConflict {
-		t.Errorf("Expected to get HTTP 409, but got %d", httpResponseRecorder.Code)
+	if recordedPOSTResponse.Code != http.StatusConflict {
+		t.Errorf("Expected to get HTTP 409, but got %d", recordedPOSTResponse.Code)
 		t.Fail()
 	}
 
 	// Verify message body gives `ok`
 	expected := `{"message":"duplicate item"}`
-	verifyHTTPResponseBody(expected, httpResponseRecorder.Body.String(), t)
-
-	httpResponseRecorder.Flush()
-}
-
-func configureITTestEnvironment() (*gin.Engine, *Controller) {
-	r := gin.New()
-	c := setupControllerWithDatabaseBackend()
-
-	return r, c
-}
-
-func setupControllerWithDatabaseBackend() *Controller {
-	dbConfigs := config.DBConfiguration{
-		Type:     "mongodb",
-		Host:     "localhost:27017",
-		Database: "card-keeper-it",
-	}
-
-	return setupController(dbConfigs)
-}
-
-func recordRequest(req *http.Request, recorder *httptest.ResponseRecorder) {
-	engine.ServeHTTP(recorder, req)
+	verifyHTTPResponseBody(expected, recordedPOSTResponse.Body.String(), t)
 }

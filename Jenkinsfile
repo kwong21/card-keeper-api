@@ -18,7 +18,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Run Unit Test') {
             steps {
                 withEnv(["PATH+GO=${GOPATH}/bin"]){
                     echo 'Running vetting'
@@ -26,7 +26,7 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'go test `go list ./...`'
+                    sh 'go test `go list ./...` -short'
                 }
             }
         }

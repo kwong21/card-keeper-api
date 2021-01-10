@@ -11,5 +11,9 @@
         "AllowedOrigin": "http://localhost:4200",
         "ListenPort": "8080"
     },
-    "UseLoggerMiddleWare": false
+    "Auth": {
+        "Audience": "",
+        "Issuer": "",
+        "JWKS": ""
+    }
 }
