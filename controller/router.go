@@ -27,8 +27,8 @@ func InitServer(configs configs.Configuration) *gin.Engine {
 
 	jwtMiddleware := middleware.GetJWTMiddleware(configs.AuthConfiguration())
 
-	v1.GET("/collection", checkJWT(jwtMiddleware), controller.GetCollection)
-	v1.POST("/collection", checkJWT(jwtMiddleware), controller.AddToCollection)
+	v1.GET("/collection/:collection", checkJWT(jwtMiddleware), controller.GetCollection)
+	v1.POST("/collection/:collection", checkJWT(jwtMiddleware), controller.AddToCollection)
 
 	router.GET("/ping", controller.Ping)
 
@@ -46,7 +46,6 @@ func checkJWT(jwtMiddleware *jwtmiddleware.JWTMiddleware) gin.HandlerFunc {
 
 func setupController(configs configs.DBConfiguration) *Controller {
 	controller := new(Controller)
-
 	repo, err := initializeRepository(configs)
 
 	if err != nil {

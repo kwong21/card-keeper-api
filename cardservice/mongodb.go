@@ -34,19 +34,19 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 	}, err
 }
 
-func (r *mongoStore) GetAll() (*[]Card, error) {
-	cardsCollection := r.db.Collection("cards")
+func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) {
+	cardsCollection := r.db.Collection(collection)
 
 	var cards []Card
 
 	cursor, err := cardsCollection.Find(context.TODO(), bson.D{{}})
 	err = cursor.All(context.TODO(), &cards)
 
-	return &cards, err
+	return cards, err
 }
 
-func (r *mongoStore) AddCard(card Card) error {
-	cardsCollection := r.db.Collection("cards")
+func (r *mongoStore) AddCardToCollection(card Card, collection string) error {
+	cardsCollection := r.db.Collection(collection)
 	var serviceError error = nil
 
 	insert, err := cardsCollection.InsertOne(context.TODO(), card)

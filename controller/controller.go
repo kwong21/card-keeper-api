@@ -17,11 +17,12 @@ type Controller struct {
 func (controller *Controller) AddToCollection(c *gin.Context) {
 	var newCard cardservice.Card
 	error := c.BindJSON(&newCard)
+	collection := c.Param("collection")
 
 	if error != nil {
 		setResponse(c, "invalid data", http.StatusBadRequest)
 	} else {
-		err := controller.Service.AddCard(newCard)
+		err := controller.Service.AddCardToCollection(newCard, collection)
 
 		if err != nil {
 			msg, code := checkErrorAndReturnStatus(err)
@@ -30,12 +31,14 @@ func (controller *Controller) AddToCollection(c *gin.Context) {
 			setResponse(c, "ok", http.StatusAccepted)
 		}
 	}
+
 	return
 }
 
 // GetCollection accepts GET request and get cards in collection
 func (controller *Controller) GetCollection(c *gin.Context) {
-	cards, err := controller.Service.GetAll()
+	collection := c.Param("collection")
+	cards, err := controller.Service.GetAllCardsInCollection(collection)
 
 	if err != nil {
 		setResponse(c, "error getting cards", http.StatusInternalServerError)

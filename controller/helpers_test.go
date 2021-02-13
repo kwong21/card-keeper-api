@@ -16,6 +16,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var DefaultSupportedCollection = []string{"hockey"}
+
 type getCollectionResponse struct {
 	Message string             `json:"message"`
 	Cards   []cardservice.Card `json:"cards"`

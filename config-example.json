@@ -1,7 +1,7 @@
 {
     "DB": {
-        "Type": "in-memory",
-        "Host": "localhost",
+        "Type": "mongodb",
+        "Host": "localhost:27017",
         "User": "",
         "Password": "",
         "Database": "",
@@ -9,7 +9,7 @@
     },
     "API": {
         "AllowedOrigin": "http://localhost:4200",
-        "ListenPort": "8080"
+        "ListenPort": "8080"    
     },
     "Auth": {
         "Audience": "",

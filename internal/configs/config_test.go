@@ -15,11 +15,11 @@ func TestReturnDefaultIfCantReadConfig(t *testing.T) {
 }
 
 func TestReturnValuesInFile(t *testing.T) {
-	c := NewFromFile("../config-example.json")
+	c := NewFromFile("../../config-example.json")
 
 	fail := false
 
-	if c.DBConfigs().Type != "mongodb" {
+	if c.DBConfigs().Type != "in-memory" {
 		t.Errorf("Expected mongodb, but got %s", c.DBConfigs().Type)
 		fail = true
 	}

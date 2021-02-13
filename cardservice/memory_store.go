@@ -5,24 +5,24 @@ import (
 )
 
 type memoryStore struct {
-	Cards []Card
+	Cards map[string][]Card
 }
 
 //InMemoryStore returns an in-memory repository
 func InMemoryStore() (Repository, error) {
 	return &memoryStore{
-		Cards: make([]Card, 0),
+		Cards: make(map[string][]Card),
 	}, nil
 }
 
-func (r *memoryStore) GetAll() (*[]Card, error) {
-	return &r.Cards, nil
+func (r *memoryStore) GetAllCardsInCollection(collection string) ([]Card, error) {
+	return r.Cards[collection], nil
 }
 
-func (r *memoryStore) AddCard(card Card) error {
+func (r *memoryStore) AddCardToCollection(card Card, collection string) error {
 	var err error
 
-	for _, c := range r.Cards {
+	for _, c := range r.Cards[collection] {
 		if card.Base.Player == c.Base.Player {
 			if reflect.DeepEqual(card, c) {
 				err = &DuplicateError{}
@@ -31,7 +31,8 @@ func (r *memoryStore) AddCard(card Card) error {
 	}
 
 	if err == nil {
-		r.Cards = append(r.Cards, card)
+		cardsInCollection := r.Cards[collection]
+		r.Cards[collection] = append(cardsInCollection, card)
 	}
 
 	return err

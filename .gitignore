@@ -24,3 +24,5 @@ logs/*.log
 .env
 .vscode
 .vscode/*
+
+config.json

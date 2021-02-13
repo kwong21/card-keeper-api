@@ -34,8 +34,9 @@ type AuthConfiguration struct {
 type configuration struct {
 	DB  DBConfiguration
 	API struct {
-		AllowedOrigin string
-		ListenPort    string
+		AllowedOrigin        string
+		ListenPort           string
+		SupportedCollections []string
 	}
 	Auth AuthConfiguration
 }

@@ -7,6 +7,6 @@ type Service struct {
 
 // Repository writes and reads data from declared store
 type Repository interface {
-	GetAll() (*[]Card, error)
-	AddCard(Card) error
+	GetAllCardsInCollection(string) ([]Card, error)
+	AddCardToCollection(Card, string) error
 }
