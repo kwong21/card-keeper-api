@@ -60,13 +60,12 @@ pipeline {
                 sh 'go build'
             }
         }
-
-        post {
-            always {
-                sh 'sudo docker-compose down'
-            }
+    }
+    
+    post {
+        always {
+            sh 'sudo docker-compose down'
         }
-                
     }
     // Add email notifications
     // post {
