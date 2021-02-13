@@ -23,31 +23,14 @@ type getCollectionResponse struct {
 	Cards   []cardservice.Card `json:"cards"`
 }
 
-func configureITTestEnvironment() (*gin.Engine, *Controller) {
-	r := gin.New()
-	c := setupControllerWithDatabaseBackend()
-
-	return r, c
-}
-
 func setupControllerWithInMemoryBackend() *Controller {
 	inmemory := configs.Default()
 
 	return setupController(inmemory.DBConfigs())
 }
 
-func setupControllerWithDatabaseBackend() *Controller {
-	dbConfigs := configs.DBConfiguration{
-		Type:     "mongodb",
-		Host:     "localhost:27017",
-		Database: "card-keeper-it",
-	}
-
-	return setupController(dbConfigs)
-}
-
 func makeAddCardRequestToHTTPServer(serializedData []byte, engine *gin.Engine) (*httptest.ResponseRecorder, error) {
-	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(serializedData))
+	req, err := http.NewRequest("POST", "/collection/hockey", bytes.NewBuffer(serializedData))
 
 	if err != nil {
 		return nil, err
@@ -60,7 +43,7 @@ func makeAddCardRequestToHTTPServer(serializedData []byte, engine *gin.Engine) (
 }
 
 func makeGetCardsRequesttToHTTPServer(engine *gin.Engine) (*httptest.ResponseRecorder, error) {
-	req, err := http.NewRequest("GET", "/collection", nil)
+	req, err := http.NewRequest("GET", "/collection/hockey", nil)
 
 	if err != nil {
 		return nil, err

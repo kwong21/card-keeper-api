@@ -123,8 +123,8 @@ func setupTestEnvironment() *gin.Engine {
 	testEngine := gin.New()
 	testController := setupControllerWithInMemoryBackend()
 
-	testEngine.GET("/collection", testController.GetCollection)
-	testEngine.POST("/collection", testController.AddToCollection)
+	testEngine.GET("/collection/:collection", testController.GetCollection)
+	testEngine.POST("/collection/:collection", testController.AddToCollection)
 
 	return testEngine
 }
