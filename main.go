@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+
 	"card-keeper-api/controller"
-	"io"
-	"os"
+	config "card-keeper-api/internal/configs"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,10 +13,20 @@ import (
 func main() {
 	gin.DisableConsoleColor()
 
-	f, _ := os.Create("card-keeper-api.log")
-	gin.DefaultWriter = io.MultiWriter(f)
+	var configs config.Configuration
+	var c string
 
-	r := controller.InitRouter()
+	flag.StringVar(&c, "conf", "", "Configuration file")
+	flag.Parse()
 
-	r.Run(":8080")
+	if c == "" {
+		configs = config.Default()
+	} else {
+		configs = config.NewFromFile(c)
+	}
+
+	server := controller.InitServer(configs)
+
+	port := fmt.Sprintf(":%s", configs.APIListenPort())
+	server.Run(port)
 }

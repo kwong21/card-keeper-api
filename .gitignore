@@ -17,3 +17,12 @@ docker/cockroach-data/*
 
 # Log files
 *.log
+logs/*.log
+*logs/
+
+# Local env file
+.env
+.vscode
+.vscode/*
+
+config.json

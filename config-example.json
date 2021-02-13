@@ -1,0 +1,19 @@
+{
+    "DB": {
+        "Type": "mongodb",
+        "Host": "localhost:27017",
+        "User": "",
+        "Password": "",
+        "Database": "",
+        "ReplicaSet": ""
+    },
+    "API": {
+        "AllowedOrigin": "http://localhost:4200",
+        "ListenPort": "8080"    
+    },
+    "Auth": {
+        "Audience": "",
+        "Issuer": "",
+        "JWKS": ""
+    }
+}

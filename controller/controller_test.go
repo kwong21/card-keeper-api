@@ -1,149 +1,130 @@
 package controller
 
 import (
-	"bytes"
-	"card-keeper-api/model"
-	"card-keeper-api/service"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
+// AuthReponse is the struct wrapper for the Auth0 auth request
+type AuthResponse struct {
+	Token string `json:"access_token"`
+	Type  string `json:"token_type"`
+}
+
 // TestAddsNewCardToRepo verifies behaviour for adding a new card.
 func TestAddsNewCardToRepo(t *testing.T) {
-	w, r, c := setupTestControllerAndHTTPRecorder()
+	t.Parallel()
 
-	repo := service.InMemoryStore()
-	s := service.Service{
-		Repository: repo,
-	}
-
-	c.Service = &s
-
-	r.POST("/collection", c.AddToCollection)
+	testEngine := setupTestEnvironment()
 
 	b := getSerializedTestCard()
-	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
+	recordedPostResponse, err := makeAddCardRequestToHTTPServer(b, testEngine)
 
-	checkError(err, t)
-
-	r.ServeHTTP(w, req)
+	if err != nil {
+		t.Error("Got error when making request.")
+		t.Fail()
+	}
 
 	// Verify that the POST request succeeded with HTTP 200
-	if w.Code != http.StatusAccepted {
-		t.Errorf("Expected to get HTTP 200, but got %d", w.Code)
+	if recordedPostResponse.Code != http.StatusAccepted {
+		t.Errorf("Expected to get HTTP 200, but got %d", recordedPostResponse.Code)
 		t.Fail()
 	}
 
 	// Verify message body gives `ok`
 	expected := `{"message":"ok"}`
-	verifyHTTPResponseBody(expected, w.Body.String(), t)
+	verifyHTTPResponseBody(expected, recordedPostResponse.Body.String(), t)
 
-	// Verify that the card is in the Stored
-	cards := c.Service.GetAll()
-	if len(*cards) != 1 {
-		t.Errorf("Expected to get 1 card, but got %d", len(*cards))
+	recordedGETResponse, err := makeGetCardsRequesttToHTTPServer(testEngine)
+
+	if err != nil {
+		t.Error("Failed to make GET request")
+		t.Fail()
+	}
+
+	if recordedGETResponse.Code != http.StatusOK {
+		t.Errorf("Expected to get HTTP 200, but got %d", recordedGETResponse.Code)
+		t.Fail()
+	}
+
+	response := getCollectionResponse{}
+	err = json.Unmarshal(recordedGETResponse.Body.Bytes(), &response)
+
+	if err != nil {
+		t.Errorf("Failed to unmarshal get response %s", err)
+		t.Fail()
+	}
+
+	if len(response.Cards) != 1 {
+		t.Errorf("Expected to find one card returned after POST but got %d", len(response.Cards))
 		t.Fail()
 	}
 }
 
+// TestErrorOnDuplicate verifies an error is returned when a duplicate card is added.
+func TestErrorOnDuplicate(t *testing.T) {
+	t.Parallel()
+
+	testEngine := setupTestEnvironment()
+
+	b := getSerializedTestCard()
+	firstPostRequest, err := makeAddCardRequestToHTTPServer(b, testEngine)
+
+	if err != nil {
+		t.Errorf("error making request %s", err)
+		t.Fail()
+	}
+
+	if firstPostRequest.Code != http.StatusAccepted {
+		t.Errorf("Expected 202, but got %d", firstPostRequest.Code)
+	}
+
+	duplicateRequest, err := makeAddCardRequestToHTTPServer(b, testEngine)
+
+	if err != nil {
+		t.Errorf("error making request %s", err)
+		t.Fail()
+	}
+
+	if duplicateRequest.Code != http.StatusConflict {
+		t.Errorf("Expected 409, but got %d", duplicateRequest.Code)
+	}
+
+}
+
 // TestAddNewCardError expects error to be returned when data is incorrect
 func TestAddNewCardError(t *testing.T) {
-	w, r, c := setupTestControllerAndHTTPRecorder()
-	r.POST("/collection", c.AddToCollection)
+	t.Parallel()
+
+	testEngine := setupTestEnvironment()
 
 	b, _ := json.Marshal("foo bar")
-	req, err := http.NewRequest("POST", "/collection", bytes.NewBuffer(b))
 
-	checkError(err, t)
+	recordedPostResponse, err := makeAddCardRequestToHTTPServer(b, testEngine)
 
-	r.ServeHTTP(w, req)
+	if err != nil {
+		t.Errorf("error making request %s", err)
+		t.Fail()
+	}
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected to get HTTP 400, but got %d", w.Code)
+	if recordedPostResponse.Code != http.StatusBadRequest {
+		t.Errorf("Expected to get HTTP 400, but got %d", recordedPostResponse.Code)
 	}
 
 	// Verify message body gives `ok`
 	expected := `{"message":"invalid data"}`
-	verifyHTTPResponseBody(expected, w.Body.String(), t)
+	verifyHTTPResponseBody(expected, recordedPostResponse.Body.String(), t)
 }
 
-// TestUnAuthenticatedAPICall verifies a 401 is received if unauthorized
-func TestUnAuthenticatedAPICall(t *testing.T) {
-	req, err := http.NewRequest("GET", "/ping", nil)
+func setupTestEnvironment() *gin.Engine {
+	testEngine := gin.New()
+	testController := setupControllerWithInMemoryBackend()
 
-	checkError(err, t)
+	testEngine.GET("/collection", testController.GetCollection)
+	testEngine.POST("/collection", testController.AddToCollection)
 
-	responseCode := testCheckJWTRequests(req)
-
-	if responseCode != http.StatusUnauthorized {
-		t.Errorf("Expected to get HTTP 401, but got %d", responseCode)
-	}
-}
-
-// TestAuthenticatedAPICall verifies a 200 is received if authorized
-func TestAuthenticatedAPICall(t *testing.T) {
-	req, err := http.NewRequest("GET", "/ping", nil)
-
-	req.Header.Set("authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IlhDeE53XzE1WFh1ZkItRk5vQ2FVVSJ9.eyJpc3MiOiJodHRwczovL2Rldi1zaGliYXRlay51cy5hdXRoMC5jb20vIiwic3ViIjoiVFVXaEFIQ2hNT0dUU0dYZlVEMEdwRWpOV3Bsc0lNMXBAY2xpZW50cyIsImF1ZCI6Imh0dHBzOi8vY2FyZGtlZXBlci1kZXYvYXBpIiwiaWF0IjoxNjA3ODk4MzQyLCJleHAiOjE2MDc5ODQ3NDIsImF6cCI6IlRVV2hBSENoTU9HVFNHWGZVRDBHcEVqTldwbHNJTTFwIiwiZ3R5IjoiY2xpZW50LWNyZWRlbnRpYWxzIn0.MMaJXDyZJYVP7WvBhLCrWJd6VfkykI-kgQ02Ra65aRYuqKfY2zwqeIam_dZHYAG0JyZyIQl6nE_AHEXIjwpGKNLynuFT9eHPaP3QOLI3FYDS0a8pgjOY0bCvTnRGTSWJn1Z93HIlZoX7-E6KbARpb0t-H-1_CaxbkDAptB7g5eQBklJR9ZpESePZ9t6cSgh0bF1n2CDoeAAXg-VW9sR4jJ0LxVL1EkMFMNyPchjaSgk8HDBcVWkoV1ZwvvdNc__LofeIjSERHSaIBRVCqj85PuUCR2TVOXEcuxP5h01Ehp4oR48fO2jeOGLZMxGVXh62vpicPFp5bfE6w0mN-xCqHA")
-
-	checkError(err, t)
-
-	responseCode := testCheckJWTRequests(req)
-
-	if responseCode != http.StatusOK {
-		t.Errorf("Expected to get HTTP 200, but got %d", responseCode)
-	}
-}
-
-func testCheckJWTRequests(req *http.Request) int {
-	w, r, c := setupTestControllerAndHTTPRecorder()
-
-	// Set dev testing Auth0 instance
-	os.Setenv("AUTH0_AUDIENCE", "https://cardkeeper-dev/api")
-	os.Setenv("AUTH0_ISSUER", "https://dev-shibatek.us.auth0.com/")
-
-	r.GET("/ping", checkJWT(), c.Ping)
-
-	r.ServeHTTP(w, req)
-
-	return w.Code
-}
-
-func setupTestControllerAndHTTPRecorder() (*httptest.ResponseRecorder, *gin.Engine, *Controller) {
-	w := httptest.NewRecorder()
-	r := gin.Default()
-	c := new(Controller)
-
-	return w, r, c
-}
-
-func verifyHTTPResponseBody(expected string, actual string, t *testing.T) {
-	if actual != expected {
-		t.Errorf("Expected message body of %v, but got %v", expected, actual)
-	}
-}
-
-func getSerializedTestCard() []byte {
-	card := model.Card{
-		Year:   2020,
-		Maker:  "Upper Deck",
-		Set:    "Series One",
-		Player: "Brock Boeser",
-	}
-
-	b, _ := json.Marshal(card)
-
-	return b
-}
-
-func checkError(err error, t *testing.T) {
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
+	return testEngine
 }

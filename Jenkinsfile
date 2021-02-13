@@ -18,7 +18,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Run Unit Test') {
             steps {
                 withEnv(["PATH+GO=${GOPATH}/bin"]){
                     echo 'Running vetting'
@@ -26,8 +26,34 @@ pipeline {
                     echo 'Running linting'
                     sh 'golint .'
                     echo 'Running test'
-                    sh 'go test `go list ./... | grep -v it`'
+                    sh 'go test `go list ./...` -short'
                 }
+            }
+        }
+
+        stage('Pre integration test') {
+            steps {
+                echo 'Bringing up docker container for integration test'
+                sh 'sudo docker-compose up -d'
+            }
+        }
+
+        stage('Run integration tests') {
+            steps{
+                withEnv(["PATH+GO=${GOPATH}/bin"]){
+                    echo 'Running vetting'
+                    sh 'go vet .'
+                    echo 'Running linting'
+                    sh 'golint .'
+                    echo 'Running test'
+                    sh 'go test `go list ./...` --tags=integration'
+                }
+            }
+        }
+
+        stage('Stop containers') {
+            steps{
+                sh 'sudo docker-compose down'
             }
         }
 
