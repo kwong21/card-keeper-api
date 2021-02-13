@@ -20,7 +20,7 @@ func TestReturnValuesInFile(t *testing.T) {
 	fail := false
 
 	if c.DBConfigs().Type != "in-memory" {
-		t.Errorf("Expected mongodb, but got %s", c.DBConfigs().Type)
+		t.Errorf("Expected in-memory, but got %s", c.DBConfigs().Type)
 		fail = true
 	}
 
