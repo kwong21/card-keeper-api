@@ -117,7 +117,7 @@ func verifyHTTPResponseBody(expected string, actual string, t *testing.T) {
 
 func getSerializedTestCard() []byte {
 	base := cardservice.Base{
-		Year:   2020,
+		Year:   "2020",
 		Make:   "Upper Deck",
 		Set:    "Series One",
 		Player: "Brock Boeser",
