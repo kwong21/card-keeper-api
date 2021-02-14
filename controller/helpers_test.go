@@ -58,7 +58,7 @@ func makeGetCardsRequesttToHTTPServer(engine *gin.Engine) (*httptest.ResponseRec
 func getBearerTokenForTest() string {
 	auth := new(AuthResponse)
 
-	url := os.Getenv("AUTH0_URL")
+	url := os.Getenv("AUTH0_JWKS")
 
 	clientID := os.Getenv("AUTH0_CLIENT_ID")
 	secretID := os.Getenv("AUTH0_SECRET_ID")
