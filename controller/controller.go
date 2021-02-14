@@ -31,7 +31,6 @@ func (controller *Controller) AddToCollection(c *gin.Context) {
 			setResponse(c, "ok", http.StatusAccepted)
 		}
 	}
-
 	return
 }
 

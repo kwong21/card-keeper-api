@@ -27,15 +27,13 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	mongodb := client.Database(configs.Database)
 
-	createIndexForCardsCollection(mongodb)
-
 	return &mongoStore{
 		db: mongodb,
 	}, err
 }
 
 func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) {
-	cardsCollection := r.db.Collection(collection)
+	cardsCollection := r.getCollectionFromMongoDB(collection)
 
 	var cards []Card
 
@@ -46,8 +44,10 @@ func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) 
 }
 
 func (r *mongoStore) AddCardToCollection(card Card, collection string) error {
-	cardsCollection := r.db.Collection(collection)
+	cardsCollection := r.getCollectionFromMongoDB(collection)
 	var serviceError error = nil
+
+	card.setCardID()
 
 	insert, err := cardsCollection.InsertOne(context.TODO(), card)
 
@@ -62,6 +62,35 @@ func (r *mongoStore) AddCardToCollection(card Card, collection string) error {
 	}
 
 	return serviceError
+}
+
+func (r *mongoStore) getCollectionFromMongoDB(collection string) *mongo.Collection {
+	mod := mongo.IndexModel{
+		Keys: bson.M{
+			"cardID": 1,
+		},
+		Options: options.Index().SetUnique(true),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cardsCollection := r.db.Collection(collection)
+
+	name, err := cardsCollection.Indexes().CreateOne(ctx, mod)
+
+	if err != nil {
+		mongoLogger.LogErrorWithFields(
+			logger.LogFields{
+				"Error": err,
+			}, "not able to create the index for cards")
+	}
+
+	if name != "" {
+		mongoLogger.LogInfo(fmt.Sprintf("Created index %s", name))
+	}
+
+	return cardsCollection
 }
 
 func buildConnectionURI(dbConfig config.DBConfiguration) string {
@@ -84,27 +113,6 @@ func buildConnectionURI(dbConfig config.DBConfiguration) string {
 	uri := fmt.Sprintf("mongodb://%s%s/%s", auth, hosts, replicaSet)
 
 	return uri
-}
-
-func createIndexForCardsCollection(client *mongo.Database) {
-	mod := mongo.IndexModel{
-		Keys:    bson.M{"base.year": 1, "base.set": 1, "base.make": 1, "base.player": 1},
-		Options: options.Index().SetUnique(true),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cardsCollection := client.Collection("cards")
-
-	_, err := cardsCollection.Indexes().CreateOne(ctx, mod)
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.LogFields{
-				"Error": err,
-			}, "not able to create the index for cards")
-	}
 }
 
 func wrapMongoDBError(err mongo.WriteException) error {

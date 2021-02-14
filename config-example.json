@@ -1,6 +1,6 @@
 {
     "DB": {
-        "Type": "mongodb",
+        "Type": "in-memory",
         "Host": "localhost:27017",
         "User": "",
         "Password": "",

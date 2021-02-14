@@ -1,6 +1,7 @@
 package controller
 
 import (
+	configs "card-keeper-api/internal/configs"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -14,8 +15,25 @@ var itController *Controller
 func init() {
 	engine, itController = configureITTestEnvironment()
 
-	engine.GET("/collection", itController.GetCollection)
-	engine.POST("/collection", itController.AddToCollection)
+	engine.GET("/collection/:collection", itController.GetCollection)
+	engine.POST("/collection/:collection", itController.AddToCollection)
+}
+
+func configureITTestEnvironment() (*gin.Engine, *Controller) {
+	r := gin.New()
+	c := setupControllerWithDatabaseBackend()
+
+	return r, c
+}
+
+func setupControllerWithDatabaseBackend() *Controller {
+	dbConfigs := configs.DBConfiguration{
+		Type:     "mongodb",
+		Host:     "localhost:27017",
+		Database: "card-keeper-it",
+	}
+
+	return setupController(dbConfigs)
 }
 
 // TestAddNewCardToRepoIntegration verifies behaviour for adding a new card.

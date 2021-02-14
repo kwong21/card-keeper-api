@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    options {
+        disableConcurrentBuilds()
+    }
     tools {
         go 'Go 1.15 Compiler'
     }
@@ -51,12 +54,6 @@ pipeline {
             }
         }
 
-        stage('Stop containers') {
-            steps{
-                sh 'sudo docker-compose down'
-            }
-        }
-
         stage('Build') {
             when {
                 branch 'master'
@@ -66,7 +63,12 @@ pipeline {
                 sh 'go build'
             }
         }
-        
+    }
+
+    post {
+        always {
+            sh 'sudo docker-compose down'
+        }
     }
     // Add email notifications
     // post {
