@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    options {
+        disableConcurrentBuilds()
+    }
     tools {
         go 'Go 1.15 Compiler'
     }
@@ -61,7 +64,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             sh 'sudo docker-compose down'
