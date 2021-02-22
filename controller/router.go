@@ -51,7 +51,8 @@ func setupController(configs configs.DBConfiguration) *Controller {
 	if err != nil {
 		routerLogger.LogErrorWithFields(
 			logger.LogFields{
-				"err": err,
+				"configs": configs,
+				"err":     err,
 			}, "not able to instantiate the requested repo configuration")
 		routerLogger.LogFatal("fatal error creating controller")
 	}
