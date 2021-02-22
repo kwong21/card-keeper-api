@@ -25,11 +25,15 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(context.TODO(), clientOptions)
-	mongodb := client.Database(configs.Database)
+	err = client.Ping(context.TODO(), nil)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &mongoStore{
-		db: mongodb,
-	}, err
+		db: client.Database(configs.Database),
+	}, nil
 }
 
 func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) {
