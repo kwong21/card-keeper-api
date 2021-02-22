@@ -9,21 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var engine *gin.Engine
-var itController *Controller
-
-func init() {
-	engine, itController = configureITTestEnvironment()
-
-	engine.GET("/collection/:collection", itController.GetCollection)
-	engine.POST("/collection/:collection", itController.AddToCollection)
-}
-
-func configureITTestEnvironment() (*gin.Engine, *Controller) {
+func configureITTestEnvironment() *gin.Engine {
 	r := gin.New()
 	c := setupControllerWithDatabaseBackend()
 
-	return r, c
+	r.GET("/collection/:collection", c.GetCollection)
+	r.POST("/collection/:collection", c.AddToCollection)
+
+	return r
 }
 
 func setupControllerWithDatabaseBackend() *Controller {
@@ -41,6 +34,8 @@ func TestAddNewCardToRepoIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
+
+	engine := configureITTestEnvironment()
 
 	b := getSerializedTestCard()
 	recordedPOSTResponse, err := makeAddCardRequestToHTTPServer(b, engine)
@@ -94,6 +89,9 @@ func TestDuplicateCardNotAddedIntegration(t *testing.T) {
 	}
 
 	b := getSerializedTestCard()
+
+	engine := configureITTestEnvironment()
+
 	recordedPOSTResponse, err := makeAddCardRequestToHTTPServer(b, engine)
 
 	if err != nil {
