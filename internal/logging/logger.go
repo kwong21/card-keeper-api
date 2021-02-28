@@ -51,6 +51,11 @@ func openLogFile() (*os.File, error) {
 	return logFile, err
 }
 
+// LogDebug writes Debug log statements
+func (l *APILogger) LogDebug(message string) {
+	l.Debug(message)
+}
+
 // LogInfo writes Info log statements.
 func (l *APILogger) LogInfo(message string) {
 	l.Info(message)

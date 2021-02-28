@@ -31,9 +31,43 @@ func MongoDB(configs config.DBConfiguration) (Repository, error) {
 		return nil, err
 	}
 
+	db := client.Database(configs.Database)
+	createIndexesForCollectionsInDatabase(db)
+
 	return &mongoStore{
-		db: client.Database(configs.Database),
+		db: db,
 	}, nil
+}
+
+func createIndexesForCollectionsInDatabase(db *mongo.Database) {
+	collectionNames, _ := db.ListCollectionNames(context.TODO(), bson.D{})
+
+	for _, v := range collectionNames {
+		mongoLogger.LogDebug("Creating index for " + v)
+
+		collection := db.Collection(v)
+
+		mod := mongo.IndexModel{
+			Keys: bson.M{
+				"cardID": 1,
+			},
+			Options: options.Index().SetUnique(true),
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		name, err := collection.Indexes().CreateOne(ctx, mod)
+
+		if err != nil {
+			mongoLogger.LogErrorWithFields(
+				logger.LogFields{
+					"Error": err,
+				}, "not able to create the index for cards")
+		} else {
+			mongoLogger.LogDebug("Index created in collection " + v + ". Index name " + name)
+		}
+	}
 }
 
 func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) {
@@ -43,7 +77,6 @@ func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) 
 
 	cursor, err := cardsCollection.Find(context.TODO(), bson.D{{}})
 	err = cursor.All(context.TODO(), &cards)
-
 	return cards, err
 }
 
@@ -69,30 +102,7 @@ func (r *mongoStore) AddCardToCollection(card Card, collection string) error {
 }
 
 func (r *mongoStore) getCollectionFromMongoDB(collection string) *mongo.Collection {
-	mod := mongo.IndexModel{
-		Keys: bson.M{
-			"cardID": 1,
-		},
-		Options: options.Index().SetUnique(true),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	cardsCollection := r.db.Collection(collection)
-
-	name, err := cardsCollection.Indexes().CreateOne(ctx, mod)
-
-	if err != nil {
-		mongoLogger.LogErrorWithFields(
-			logger.LogFields{
-				"Error": err,
-			}, "not able to create the index for cards")
-	}
-
-	if name != "" {
-		mongoLogger.LogInfo(fmt.Sprintf("Created index %s", name))
-	}
 
 	return cardsCollection
 }
