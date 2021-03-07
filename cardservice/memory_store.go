@@ -1,38 +1,42 @@
 package cardservice
 
-import (
-	"reflect"
-)
-
 type memoryStore struct {
-	Cards map[string][]Card
+	Cards map[string]map[uint32]Card
 }
 
 //InMemoryStore returns an in-memory repository
 func InMemoryStore() (Repository, error) {
 	return &memoryStore{
-		Cards: make(map[string][]Card),
+		Cards: make(map[string]map[uint32]Card),
 	}, nil
 }
 
 func (r *memoryStore) GetAllCardsInCollection(collection string) ([]Card, error) {
-	return r.Cards[collection], nil
+	c := r.Cards[collection]
+	v := make([]Card, 0, len(c))
+
+	for _, card := range c {
+		v = append(v, card)
+	}
+	return v, nil
 }
 
 func (r *memoryStore) AddCardToCollection(card Card, collection string) error {
 	var err error
 
-	for _, c := range r.Cards[collection] {
-		if card.Base.Player == c.Base.Player {
-			if reflect.DeepEqual(card, c) {
-				err = &DuplicateError{}
-			}
-		}
+	if _, ok := r.Cards[collection]; !ok {
+		cardsMap := make(map[uint32]Card)
+
+		r.Cards[collection] = cardsMap
+
 	}
 
-	if err == nil {
-		cardsInCollection := r.Cards[collection]
-		r.Cards[collection] = append(cardsInCollection, card)
+	c := r.Cards[collection]
+
+	if _, ok := c[card.CardID]; ok {
+		err = &DuplicateError{}
+	} else {
+		c[card.CardID] = card
 	}
 
 	return err

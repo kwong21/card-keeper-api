@@ -10,6 +10,7 @@ type Card struct {
 	CardID uint32 `bson:"cardID,omitempty"`
 	Base
 	Insert
+	IsOnWatchList bool `json:"isWatchListed"`
 }
 
 // Base has fields belonging to a base card
