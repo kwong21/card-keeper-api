@@ -70,6 +70,14 @@ func createIndexesForCollectionsInDatabase(db *mongo.Database) {
 	}
 }
 
+func (r *mongoStore) GetWatchListedCards(collection string) ([]Card, error) {
+	return nil, nil
+}
+
+func (r *mongoStore) GetCardInCollection(cardID uint32, collection string) (Card, error) {
+	return Card{}, nil
+}
+
 func (r *mongoStore) GetAllCardsInCollection(collection string) ([]Card, error) {
 	cardsCollection := r.getCollectionFromMongoDB(collection)
 
@@ -99,6 +107,10 @@ func (r *mongoStore) AddCardToCollection(card Card, collection string) error {
 	}
 
 	return serviceError
+}
+
+func (r *mongoStore) UpdateCardInCollection(card Card, collection string) error {
+	return nil
 }
 
 func (r *mongoStore) getCollectionFromMongoDB(collection string) *mongo.Collection {
