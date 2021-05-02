@@ -1,5 +1,7 @@
 package cardservice
 
+import "errors"
+
 type memoryStore struct {
 	Cards map[string]map[uint32]Card
 }
@@ -9,6 +11,35 @@ func InMemoryStore() (Repository, error) {
 	return &memoryStore{
 		Cards: make(map[string]map[uint32]Card),
 	}, nil
+}
+
+func (r *memoryStore) GetCardInCollection(cardID uint32, collection string) (Card, error) {
+	c, ok := r.Cards[collection]
+
+	if !ok {
+		return Card{}, errors.New("Collection does not exist")
+	}
+
+	card := c[cardID]
+
+	return card, nil
+}
+
+func (r *memoryStore) GetWatchListedCards(collection string) ([]Card, error) {
+	c, err := r.GetAllCardsInCollection(collection)
+	watchListedCards := make([]Card, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, card := range c {
+		if card.IsOnWatchList {
+			watchListedCards = append(watchListedCards, card)
+		}
+	}
+
+	return watchListedCards, err
 }
 
 func (r *memoryStore) GetAllCardsInCollection(collection string) ([]Card, error) {
@@ -40,4 +71,8 @@ func (r *memoryStore) AddCardToCollection(card Card, collection string) error {
 	}
 
 	return err
+}
+
+func (r *memoryStore) UpdateCardInCollection(card Card, collection string) error {
+	return nil
 }
